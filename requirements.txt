@@ -2,5 +2,4 @@ numpy
 matplotlib
 mnist
 seaborn
-panads
 scikit-learn
