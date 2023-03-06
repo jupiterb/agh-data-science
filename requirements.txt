@@ -1,5 +1,5 @@
 numpy
 matplotlib
-mnist
+python-mnist
 seaborn
 scikit-learn
