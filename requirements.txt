@@ -2,4 +2,5 @@ numpy
 matplotlib
 python-mnist
 seaborn
+pandas
 scikit-learn
