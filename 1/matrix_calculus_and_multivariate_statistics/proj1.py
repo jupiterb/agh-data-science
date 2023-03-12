@@ -52,6 +52,7 @@ def _bineta_multiply(A, B, l):
 
     half_n = n // 2
 
+    # submatrices
     def get_submatrixes(M: np.ndarray):
         return (
             M[:half_n, :half_n],
@@ -63,27 +64,28 @@ def _bineta_multiply(A, B, l):
     A11, A12, A21, A22 = get_submatrixes(A)
     B11, B12, B21, B22 = get_submatrixes(B)
 
-    # multiply submatrices
-    def add_results(M1: tuple[np.ndarray, int], M2: tuple[np.ndarray, int]):
-        result_submatrix = M1[0] + M2[0]
+    # multiply submatrices and merge to final matrix
+    def make_result_submatrix(
+        rows_matrices: tuple[np.ndarray, np.ndarray],
+        cols_matrices: tuple[np.ndarray, np.ndarray],
+        l: int,
+    ):
+        # multiply
+        M1, flops1 = multiply(rows_matrices[0], cols_matrices[0], l)
+        M2, flops2 = multiply(rows_matrices[1], cols_matrices[1], l)
+        result_submatrix = M1 + M2
         # cost of submatrices mutliplication
-        flops = M1[1] + M2[1]
-        # cost of M1[0] + M2[0]
-        flops += M1[0].shape[0] * M1[0].shape[1]
+        flops = flops1 + flops2
+        # cost of M1 + M2
+        flops += M1.shape[0] * M1.shape[1]
         return result_submatrix, flops
 
-    C11, flops11 = add_results(multiply(A11, B11, l), multiply(A12, B21, l))
-    C12, flops12 = add_results(multiply(A11, B12, l), multiply(A12, B22, l))
-    C21, flops21 = add_results(multiply(A21, B11, l), multiply(A22, B21, l))
-    C22, flops22 = add_results(multiply(A21, B12, l), multiply(A22, B22, l))
-
-    # merge to final matrix
     C = np.zeros((A.shape[0], B.shape[1]))
 
-    C[:half_n, :half_n] = C11
-    C[:half_n, half_n:] = C12
-    C[half_n:, :half_n] = C21
-    C[half_n:, half_n:] = C22
+    C[:half_n, :half_n], flops11 = make_result_submatrix((A11, A12), (B11, B21), l)
+    C[:half_n, half_n:], flops12 = make_result_submatrix((A11, A12), (B12, B22), l)
+    C[half_n:, :half_n], flops21 = make_result_submatrix((A21, A22), (B11, B21), l)
+    C[half_n:, half_n:], flops22 = make_result_submatrix((A21, A22), (B12, B22), l)
 
     # count flops
     flops = flops11 + flops12 + flops21 + flops22
