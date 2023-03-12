@@ -63,14 +63,19 @@ def _bineta_multiply(A, B, l):
     A11, A12, A21, A22 = get_submatrixes(A)
     B11, B12, B21, B22 = get_submatrixes(B)
 
-    def add_multiply_results(M1: tuple[np.ndarray, int], M2: tuple[np.ndarray, int]):
-        return M1[0] + M2[0], M1[1] + M2[1] + M1[0].shape[0] * M1[0].shape[1]
-
     # multiply submatrices
-    C11, flops11 = add_multiply_results(multiply(A11, B11, l), multiply(A12, B21, l))
-    C12, flops12 = add_multiply_results(multiply(A11, B12, l), multiply(A12, B22, l))
-    C21, flops21 = add_multiply_results(multiply(A21, B11, l), multiply(A22, B21, l))
-    C22, flops22 = add_multiply_results(multiply(A21, B12, l), multiply(A22, B22, l))
+    def add_results(M1: tuple[np.ndarray, int], M2: tuple[np.ndarray, int]):
+        result_submatrix = M1[0] + M2[0]
+        # cost of submatrices mutliplication
+        flops = M1[1] + M2[1]
+        # cost of M1[0] + M2[0]
+        flops += M1[0].shape[0] * M1[0].shape[1]
+        return result_submatrix, flops
+
+    C11, flops11 = add_results(multiply(A11, B11, l), multiply(A12, B21, l))
+    C12, flops12 = add_results(multiply(A11, B12, l), multiply(A12, B22, l))
+    C21, flops21 = add_results(multiply(A21, B11, l), multiply(A22, B21, l))
+    C22, flops22 = add_results(multiply(A21, B12, l), multiply(A22, B22, l))
 
     # merge to final matrix
     C = np.zeros((A.shape[0], B.shape[1]))
