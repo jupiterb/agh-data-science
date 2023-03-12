@@ -98,18 +98,22 @@ def run_tests(k_max: int, check=False):
         l: _measurement_for_l(k_max, l, check=check) for l in range(3, k_max)
     }
 
-    rows = len(measurements)
-    _, axs = plt.subplots(rows, 2, figsize=(rows * 10, rows * 10))
+    _, axs = plt.subplots(1, 2, figsize=(20, 20))
 
     for row, (l, measurement) in enumerate(measurements.items()):
         times = [m[0] for m in measurement.values()]
         flops = [m[1] for m in measurement.values()]
 
-        axs[row, 0].plot(measurement.keys(), times)
-        axs[row, 0].set_title(f"Times for l={l}")
+        axs[0].plot(measurement.keys(), times, label=f"l = {l}")
+        axs[1].plot(measurement.keys(), flops, label=f"l = {l}")
 
-        axs[row, 1].plot(measurement.keys(), flops)
-        axs[row, 1].set_title(f"Flops for l={l}")
+    axs[0].set_title("Times [s] for different k (matrix shape is 2^k x 2^k)")
+    axs[0].grid()
+    axs[0].legend(loc="best")
+
+    axs[1].set_title("Flops for different k (matrix shape is 2^k x 2^k)")
+    axs[1].grid()
+    axs[1].legend(loc="best")
 
     plt.show()
 
