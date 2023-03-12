@@ -100,7 +100,7 @@ def run_tests(k_max: int, check=False):
 
     _, axs = plt.subplots(1, 2, figsize=(20, 20))
 
-    for row, (l, measurement) in enumerate(measurements.items()):
+    for l, measurement in measurements.items():
         times = [m[0] for m in measurement.values()]
         flops = [m[1] for m in measurement.values()]
 
