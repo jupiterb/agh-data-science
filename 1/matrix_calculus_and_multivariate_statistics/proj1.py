@@ -4,93 +4,97 @@ import numpy as np
 import time
 
 
-# Multiply functions
+# Multiply class
 
 
-def multiply(A: np.ndarray, B: np.ndarray, l: int):
-    """
-    Returns the result of a matrix multiplication and the number of floating-point operations
-    """
-    assert (
-        A.shape[1] == B.shape[0]
-    ), "number of columns of first matrix should be equal to number of rows of second matrix"
+class Multiply:
+    def __init__(self, l: int) -> None:
+        self._l = l
+        self.flops = 0
 
-    max_size = max(max(A.shape), max(B.shape))
+    def __call__(self, A: np.ndarray, B: np.ndarray):
+        return self._multiply(A, B)
 
-    return _normal_multiply(A, B) if max_size <= 2 ** l else _bineta_multiply(A, B, l)
+    def _multiply(self, A: np.ndarray, B: np.ndarray):
+        """
+        Returns the result of a matrix multiplication and the number of floating-point operations
+        """
+        assert (
+            A.shape[1] == B.shape[0]
+        ), "number of columns of first matrix should be equal to number of rows of second matrix"
 
+        max_size = max(max(A.shape), max(B.shape))
 
-def _normal_multiply(A: np.ndarray, B: np.ndarray):
-    """
-    Returns the result of a matrix multiplication and the number of floating-point operations
-    """
-    # results
-    C = np.zeros((A.shape[0], B.shape[1]))
-    flops = 0
-
-    # iterational matrices multiply
-    for i, row in enumerate(A):
-        for j, col in enumerate(B.T):
-            for a, b in zip(row, col):
-                C[i, j] += a * b
-                flops += 2
-
-    return C, flops
-
-
-def _bineta_multiply(A, B, l):
-    """
-    Returns the result of a matrix multiplication and the number of floating-point operations
-    """
-    assert A.shape == B.shape and A.shape[0] == A.shape[1]
-    n = A.shape[0]
-
-    if n == 1:
-        return A[0, 0] * B[0, 0], 1
-
-    assert not n % 2
-
-    half_n = n // 2
-
-    # submatrices
-    def get_submatrixes(M: np.ndarray):
         return (
-            M[:half_n, :half_n],
-            M[:half_n:, half_n:],
-            M[half_n:, :half_n],
-            M[half_n:, half_n:],
+            self._normal_multiply(A, B)
+            if max_size <= 2**self._l
+            else self._bineta_multiply(A, B)
         )
 
-    A11, A12, A21, A22 = get_submatrixes(A)
-    B11, B12, B21, B22 = get_submatrixes(B)
+    def _normal_multiply(self, A: np.ndarray, B: np.ndarray):
+        """
+        Returns the result of a matrix multiplication and the number of floating-point operations
+        """
+        # result matrix
+        C = np.zeros((A.shape[0], B.shape[1]))
 
-    # multiply submatrices and merge to final matrix
-    def make_result_submatrix(
-        rows_matrices: tuple[np.ndarray, np.ndarray],
-        cols_matrices: tuple[np.ndarray, np.ndarray],
-        l: int,
-    ):
-        # multiply
-        M1, flops1 = multiply(rows_matrices[0], cols_matrices[0], l)
-        M2, flops2 = multiply(rows_matrices[1], cols_matrices[1], l)
-        result_submatrix = M1 + M2
-        # cost of submatrices mutliplication
-        flops = flops1 + flops2
-        # cost of M1 + M2
-        flops += M1.shape[0] * M1.shape[1]
-        return result_submatrix, flops
+        # iterational matrices multiply
+        for i, row in enumerate(A):
+            for j, col in enumerate(B.T):
+                for a, b in zip(row, col):
+                    C[i, j] += a * b
+                    self.flops += 2
 
-    C = np.zeros((A.shape[0], B.shape[1]))
+        return C
 
-    C[:half_n, :half_n], flops11 = make_result_submatrix((A11, A12), (B11, B21), l)
-    C[:half_n, half_n:], flops12 = make_result_submatrix((A11, A12), (B12, B22), l)
-    C[half_n:, :half_n], flops21 = make_result_submatrix((A21, A22), (B11, B21), l)
-    C[half_n:, half_n:], flops22 = make_result_submatrix((A21, A22), (B12, B22), l)
+    def _bineta_multiply(self, A: np.ndarray, B: np.ndarray):
+        """
+        Returns the result of a matrix multiplication and the number of floating-point operations
+        """
+        assert A.shape == B.shape and A.shape[0] == A.shape[1]
+        n = A.shape[0]
 
-    # count flops
-    flops = flops11 + flops12 + flops21 + flops22
+        if n == 1:
+            self.flops += 1
+            return A[0, 0] * B[0, 0]
 
-    return C, flops
+        assert not n % 2
+
+        half_n = n // 2
+
+        # submatrices
+        def get_submatrixes(M: np.ndarray):
+            return (
+                M[:half_n, :half_n],
+                M[:half_n:, half_n:],
+                M[half_n:, :half_n],
+                M[half_n:, half_n:],
+            )
+
+        A11, A12, A21, A22 = get_submatrixes(A)
+        B11, B12, B21, B22 = get_submatrixes(B)
+
+        # multiply submatrices and merge to final matrix
+        def make_result_submatrix(
+            rows_matrices: tuple[np.ndarray, np.ndarray],
+            cols_matrices: tuple[np.ndarray, np.ndarray],
+        ):
+            # multiply
+            M1 = self._multiply(rows_matrices[0], cols_matrices[0])
+            M2 = self._multiply(rows_matrices[1], cols_matrices[1])
+            result_submatrix = M1 + M2
+            # cost of M1 + M2
+            self.flops += M1.shape[0] * M1.shape[1]
+            return result_submatrix
+
+        C11 = make_result_submatrix((A11, A12), (B11, B21))
+        C12 = make_result_submatrix((A11, A12), (B12, B22))
+        C21 = make_result_submatrix((A21, A22), (B11, B21))
+        C22 = make_result_submatrix((A21, A22), (B12, B22))
+
+        C = np.vstack((np.hstack((C11, C12)), np.hstack((C21, C22))))
+
+        return C
 
 
 # Test functions
@@ -145,13 +149,17 @@ def _multiplication_measurement(k: int, l: int, tries=1, max_value=10, check=Fal
     print(f"Test run: k = {k}, l = {l}, tires = {tries}")
 
     times, flopses = [], []
+    multiply = Multiply(l)
+
     for _ in range(tries):
         A = (np.random.sample((2**k, 2**k)) * 2 - 1) * max_value
         B = (np.random.sample((2**k, 2**k)) * 2 - 1) * max_value
 
+        # reset flops clock
+        multiply.flops = 0
         # measure time
         begin = time.time()
-        C, flops = multiply(A, B, l)
+        C = multiply(A, B)
         finish = time.time()
 
         if check:
@@ -160,7 +168,7 @@ def _multiplication_measurement(k: int, l: int, tries=1, max_value=10, check=Fal
             ), "Check if result of custom mutiply function is correct"
 
         times.append(finish - begin)
-        flopses.append(flops)
+        flopses.append(multiply.flops)
 
     return np.mean(times), np.mean(flopses)
 
