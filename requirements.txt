@@ -1,6 +1,7 @@
+black
 numpy
 matplotlib
+pandas
 python-mnist
 seaborn
-pandas
 scikit-learn
