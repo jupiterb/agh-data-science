@@ -3,21 +3,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+from matrix_utils import FlopsCounter, get_submatrices
+
 
 # Multiply class
 
 
-class Multiply:
+class Multiply(FlopsCounter):
     def __init__(self, l: int) -> None:
+        super().__init__()
         self._l = l
-        self.flops = 0
 
     def __call__(self, A: np.ndarray, B: np.ndarray):
         return self._multiply(A, B)
 
     def _multiply(self, A: np.ndarray, B: np.ndarray):
         """
-        Returns the result of a matrix multiplication and the number of floating-point operations
+        Returns the result of the matrix multiplication
         """
         assert (
             A.shape[1] == B.shape[0]
@@ -33,7 +35,7 @@ class Multiply:
 
     def _normal_multiply(self, A: np.ndarray, B: np.ndarray):
         """
-        Returns the result of a matrix multiplication and the number of floating-point operations
+        Returns the result of the matrix multiplication
         """
         # result matrix
         C = np.zeros((A.shape[0], B.shape[1]))
@@ -43,36 +45,23 @@ class Multiply:
             for j, col in enumerate(B.T):
                 for a, b in zip(row, col):
                     C[i, j] += a * b
-                    self.flops += 2
+                    self._flops += 2
 
         return C
 
     def _bineta_multiply(self, A: np.ndarray, B: np.ndarray):
         """
-        Returns the result of a matrix multiplication and the number of floating-point operations
+        Returns the result of the matrix multiplication
         """
         assert A.shape == B.shape and A.shape[0] == A.shape[1]
         n = A.shape[0]
 
         if n == 1:
-            self.flops += 1
-            return A[0, 0] * B[0, 0]
+            self._flops += 1
+            return A * B
 
-        assert not n % 2
-
-        half_n = n // 2
-
-        # submatrices
-        def get_submatrixes(M: np.ndarray):
-            return (
-                M[:half_n, :half_n],
-                M[:half_n:, half_n:],
-                M[half_n:, :half_n],
-                M[half_n:, half_n:],
-            )
-
-        A11, A12, A21, A22 = get_submatrixes(A)
-        B11, B12, B21, B22 = get_submatrixes(B)
+        A11, A12, A21, A22 = get_submatrices(A)
+        B11, B12, B21, B22 = get_submatrices(B)
 
         # multiply submatrices and merge to final matrix
         def make_result_submatrix(
@@ -84,7 +73,7 @@ class Multiply:
             M2 = self._multiply(rows_matrices[1], cols_matrices[1])
             result_submatrix = M1 + M2
             # cost of M1 + M2
-            self.flops += M1.shape[0] * M1.shape[1]
+            self._flops += M1.shape[0] * M1.shape[1]
             return result_submatrix
 
         C11 = make_result_submatrix((A11, A12), (B11, B21))
@@ -103,7 +92,7 @@ class Multiply:
 def run_tests(k_max: int, check=False):
     """
     Plots grid of graphs with measurement of time or floating-point operations of multiplication
-    for diffirent k and l parameters (2^k x 2^k is size of matrices, l is minimum)
+    for diffirent k and l parameters (2^k x 2^k is size of matrices, l is limit od recurrent multiplication)
     """
     measurements = {
         l: _measurement_for_l(k_max, l, check=check) for l in range(3, k_max)
@@ -156,7 +145,7 @@ def _multiplication_measurement(k: int, l: int, tries=1, max_value=10, check=Fal
         B = (np.random.sample((2**k, 2**k)) * 2 - 1) * max_value
 
         # reset flops clock
-        multiply.flops = 0
+        multiply.reset_flops()
         # measure time
         begin = time.time()
         C = multiply(A, B)
