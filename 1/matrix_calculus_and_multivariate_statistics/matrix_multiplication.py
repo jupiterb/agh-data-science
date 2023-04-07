@@ -92,7 +92,7 @@ class Multiply(FlopsCounter):
 def run_tests(k_max: int, check=False):
     """
     Plots grid of graphs with measurement of time or floating-point operations of multiplication
-    for diffirent k and l parameters (2^k x 2^k is size of matrices, l is limit od recurrent multiplication)
+    for diffirent k and l parameters (2^k x 2^k is size of matrices, l is limit of recurrent multiplication)
     """
     measurements = {
         l: _measurement_for_l(k_max, l, check=check) for l in range(3, k_max)

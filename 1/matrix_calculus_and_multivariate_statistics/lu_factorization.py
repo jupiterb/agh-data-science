@@ -3,63 +3,59 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
+from matrix_inversion import Inverse
 from matrix_multiplication import Multiply
 from matrix_utils import FlopsCounter, get_submatrices
 
 
-# Inverse class
+# LU class
 
 
-class Inverse(FlopsCounter):
+class LU(FlopsCounter):
     def __init__(self, l: int) -> None:
         super().__init__()
         self._multiply = Multiply(l)
+        self._inverse = Inverse(l)
 
     def __call__(self, A: np.ndarray):
-        return self._inverse(A)
+        self._multiply.reset_flops()
+        self._inverse.reset_flops()
+        L, U = self._lu(A)
+        self._flops += self._multiply.flops + self._inverse.flops
+        return L, U
 
-    def _inverse(self, A: np.ndarray):
+    def _lu(self, A: np.ndarray):
         """
-        Returns the result of the matrix inversion
+        Returns the results of the LU factorization
         """
         assert A.shape[0] == A.shape[1]
         n = A.shape[0]
 
         if n == 1:
-            self._flops += 1
-            return 1 / A
-
-        self._multiply.reset_flops()
+            return np.ones_like(A), A
 
         A11, A12, A21, A22 = get_submatrices(A)
         submatrices_flops = A11.shape[0] * A11.shape[1]
 
-        A11_inv = self._inverse(A11)
+        L11, U11 = self._lu(A11)
 
-        S22 = A22 - self._multiply(self._multiply(A21, A11_inv), A12)
+        U11_inv = self._inverse(U11)
+        L21 = self._multiply(A21, U11_inv)
+
+        L11_inv = self._inverse(L11)
+        U12 = self._multiply(L11_inv, A12)
+
+        S = A22 - self._multiply(L21, U12)
         self._flops += submatrices_flops
 
-        S22_inv = self._inverse(S22)
+        L22, U22 = self._lu(S)
 
-        B11 = A11_inv + self._multiply(
-            self._multiply(A11_inv, A12),
-            self._multiply(self._multiply(S22_inv, A21), A11_inv),
-        )
-        self._flops += submatrices_flops
+        L12, U21 = np.zeros_like(A12), np.zeros_like(A21)
 
-        B12 = self._multiply(self._multiply(-A11_inv, A12), S22_inv)
-        self._flops += submatrices_flops
+        L = np.vstack((np.hstack((L11, L12)), np.hstack((L21, L22))))
+        U = np.vstack((np.hstack((U11, U12)), np.hstack((U21, U22))))
 
-        B21 = self._multiply(self._multiply(-S22_inv, A21), A11_inv)
-        self._flops += submatrices_flops
-
-        B22 = S22_inv
-
-        self._flops += self._multiply.flops
-
-        B = np.vstack((np.hstack((B11, B12)), np.hstack((B21, B22))))
-
-        return B
+        return L, U
 
 
 # Test functions
@@ -67,13 +63,13 @@ class Inverse(FlopsCounter):
 
 def run_tests(k_max: int, l: int, check=False):
     """
-    Plots grid of graphs with measurement of time or floating-point operations of inversion
+    Plots grid of graphs with measurement of time or floating-point operations of LU factorization
     for diffirent k and l parameters (2^k x 2^k is size of matrices, l is limit of recurrent multiplication)
     """
-    inverse = Inverse(l)
+    lu = LU(l)
 
     measurements = {
-        k: _inversion_measurement(inverse, k, check) for k in range(2, k_max + 1)
+        k: _lu_factorization_measurement(lu, k, check) for k in range(2, k_max + 1)
     }
 
     _, axs = plt.subplots(1, 2, figsize=(20, 20))
@@ -93,14 +89,12 @@ def run_tests(k_max: int, l: int, check=False):
     plt.show()
 
 
-def _inversion_measurement(
-    inverse: Inverse, k: int, tries=1, max_value=10, check=False
-):
+def _lu_factorization_measurement(lu: LU, k: int, tries=1, max_value=10, check=False):
     """
     For each try generate matrix with values from -max_value to + max_value
-    and size 2^k x 2^k, then inverse it.
-    If check = True, compare result of inversion with result of numpy inversion function
-    Returns mean time of inversion and number of floating-point operations
+    and size 2^k x 2^k, then compute LU factorization.
+    If check = True, compare result of L * U with A
+    Returns mean time of LU factorization and number of floating-point operations
     """
 
     times, flopses = [], []
@@ -108,19 +102,19 @@ def _inversion_measurement(
         A = (np.random.sample((2**k, 2**k)) * 2 - 1) * max_value
 
         # reset flops clock
-        inverse.reset_flops()
+        lu.reset_flops()
         # measure time
         begin = time.time()
-        B = inverse(A)
+        L, U = lu(A)
         finish = time.time()
 
         if check:
             assert np.allclose(
-                B, np.linalg.inv(A), atol=1e-7
-            ), "Check if result of custom inverse function is correct"
+                L @ U, A, atol=1e-5
+            ), "Check if result of custom LU factorization is correct"
 
         times.append(finish - begin)
-        flopses.append(inverse.flops)
+        flopses.append(lu.flops)
 
     return np.mean(times), np.mean(flopses)
 
