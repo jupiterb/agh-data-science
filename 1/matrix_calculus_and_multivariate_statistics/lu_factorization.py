@@ -26,7 +26,8 @@ class LU(FlopsCounter):
 
     def _lu(self, A: np.ndarray):
         """
-        Returns the results of the LU factorization
+        Returns the results of the LU factorization.
+        L (lower) matrix has ones on its diagonal.
         """
         assert A.shape[0] == A.shape[1]
         n = A.shape[0]
@@ -69,7 +70,8 @@ def run_tests(k_max: int, l: int, check=False):
     lu = LU(l)
 
     measurements = {
-        k: _lu_factorization_measurement(lu, k, check) for k in range(2, k_max + 1)
+        k: _lu_factorization_measurement(lu, k, tries=3, check=check)
+        for k in range(2, k_max + 1)
     }
 
     _, axs = plt.subplots(1, 2, figsize=(20, 20))
@@ -89,7 +91,7 @@ def run_tests(k_max: int, l: int, check=False):
     plt.show()
 
 
-def _lu_factorization_measurement(lu: LU, k: int, tries=1, max_value=10, check=False):
+def _lu_factorization_measurement(lu: LU, k: int, tries=1, max_value=1.5, check=False):
     """
     For each try generate matrix with values from -max_value to + max_value
     and size 2^k x 2^k, then compute LU factorization.
@@ -98,7 +100,7 @@ def _lu_factorization_measurement(lu: LU, k: int, tries=1, max_value=10, check=F
     """
 
     times, flopses = [], []
-    for _ in range(tries):
+    for t in range(tries):
         A = (np.random.sample((2**k, 2**k)) * 2 - 1) * max_value
 
         # reset flops clock
@@ -109,9 +111,18 @@ def _lu_factorization_measurement(lu: LU, k: int, tries=1, max_value=10, check=F
         finish = time.time()
 
         if check:
-            assert np.allclose(
-                L @ U, A, atol=1e-5
-            ), "Check if result of custom LU factorization is correct"
+            det_L, det_U, det_A = (
+                np.product(L.diagonal()),
+                np.product(U.diagonal()),
+                np.linalg.det(A),
+            )
+            print(
+                f"Matrix size={2**k} test={t} det(L)={det_L} det(U)={det_U} det(input)={det_A}"
+            )
+            assert np.allclose(det_L, 1.0, atol=1e-6) and np.allclose(
+                det_U, det_A, atol=1e-6
+            ), "Check if determinents of results of custom LU factorization are correct"
+            assert np.allclose(L @ U, A, atol=1e-6), "Check if L * U = A"
 
         times.append(finish - begin)
         flopses.append(lu.flops)

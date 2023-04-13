@@ -73,7 +73,7 @@ def run_tests(k_max: int, l: int, check=False):
     inverse = Inverse(l)
 
     measurements = {
-        k: _inversion_measurement(inverse, k, check) for k in range(2, k_max + 1)
+        k: _inversion_measurement(inverse, k, check=check) for k in range(2, k_max + 1)
     }
 
     _, axs = plt.subplots(1, 2, figsize=(20, 20))
