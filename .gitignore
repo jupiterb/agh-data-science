@@ -128,7 +128,15 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# trash
+*/.DS_Store
+
+# labs and projects
 /1/data_exploration/labs/data/fetched/
 /1/data_exploration/project/data/preprocessed/
 /1/multivariate_statistics/
+
+/2/nlp/data/*
+!/2/nlp/data/README.md
+
+/2/nlp/models/*
+!/2/nlp/models/README.md

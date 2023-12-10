@@ -1,0 +1,19 @@
+services:
+  elastic:
+    container_name: elastic_container
+    build:
+      context: .
+      args:
+        es_version: 8.8.2
+    networks:
+      - elastic
+    ports:
+      - 9200:9200
+    mem_limit: 2GB
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD="alamakota"
+
+networks:
+  elastic:
+    name: 'elastic-net'

@@ -1,0 +1,1 @@
+Datasets were downloaded from https://huggingface.co/datasets/clarin-knext/fiqa-pl/tree/main
