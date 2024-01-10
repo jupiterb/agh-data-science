@@ -1,1 +1,1 @@
-Datasets were downloaded from https://huggingface.co/datasets/clarin-knext/fiqa-pl/tree/main
+Datasets were downloaded from https://huggingface.co/datasets/clarin-knext/fiqa-pl/tree/main and from https://huggingface.co/datasets/clarin-pl/poquad/tree/main
